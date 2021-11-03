@@ -1,0 +1,188 @@
+---
+ version: '3'
+ services:
+   zookeeper:
+     image: confluentinc/cp-zookeeper:latest
+     environment:
+       ZOOKEEPER_CLIENT_PORT: 2181
+       ZOOKEEPER_TICK_TIME: 2000
+
+   kafka:
+     # "`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-
+     # An important note about accessing Kafka from clients on other machines: 
+     # -----------------------------------------------------------------------
+     #
+     # The config used here exposes port 29092 for _external_ connections to the broker
+     # i.e. those from _outside_ the docker network. This could be from the host machine
+     # running docker, or maybe further afield if you've got a more complicated setup. 
+     # If the latter is true, you will need to change the value 'localhost' in 
+     # KAFKA_ADVERTISED_LISTENERS to one that is resolvable to the docker host from those 
+     # remote clients
+     #
+     # For connections _internal_ to the docker network, such as from other services
+     # and components, use kafka:9092.
+     #
+     # See https://rmoff.net/2018/08/02/kafka-listeners-explained/ for details
+     # "`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-
+     #
+     image: confluentinc/cp-kafka:latest
+     depends_on:
+       - zookeeper
+     ports:
+       - 29092:29092
+     environment:
+       KAFKA_BROKER_ID: 1
+       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+       KAFKA_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    
+   schema-registry:
+     image: confluentinc/cp-schema-registry:latest
+     environment:
+       SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: "zookeeper:2181"
+       SCHEMA_REGISTRY_HOST_NAME: schema-registry
+     depends_on:
+       - zookeeper
+       - kafka
+     ports:
+       - '8081:8081'
+
+   connect:
+     hostname: connect
+     image: confluentinc/cp-kafka-connect-base:latest
+     depends_on:
+       - schema-registry
+       - kafka
+     ports:
+       - '8083:8083'
+     environment:
+       CONNECT_BOOTSTRAP_SERVERS: "kafka:9092"
+       CONNECT_REST_PORT: 8083
+       CONNECT_GROUP_ID: kafka-connect
+       CONNECT_CONFIG_STORAGE_TOPIC: _connect-configs
+       CONNECT_OFFSET_STORAGE_TOPIC: _connect-offsets
+       CONNECT_STATUS_STORAGE_TOPIC: _connect-status
+       CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+       CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: false
+       CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+       CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: true
+       CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: 'http://schema-registry:8081'
+       CONNECT_REST_ADVERTISED_HOST_NAME: "kafka-connect"
+       CONNECT_LOG4J_APPENDER_STDOUT_LAYOUT_CONVERSIONPATTERN: "[%d] %p %X{connector.context}%m (%c:%L)%n"
+       CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: "1"
+       CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: "1"
+       CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: "1"
+       CONNECT_PLUGIN_PATH: /usr/share/confluent-hub-components
+     volumes:
+       - ./connectConfFiles:/connectConfFiles
+       - ./mysql-connector-java-8.0.27:/usr/share/java/kafka-connect-jdbc
+     command:
+       - bash
+       - -c
+       - |
+         echo "Installing Connectors"
+         confluent-hub install --no-prompt neo4j/kafka-connect-neo4j:latest
+         confluent-hub install --no-prompt confluentinc/kafka-connect-jdbc:latest
+         mv /usr/share/java/kafka-connect-jdbc/mysql-connector-java-8.0.27.jar /usr/share/confluent-hub-components/confluentinc-kafka-connect-jdbc/lib/
+         #
+         echo "Launching Kafka Connect worker"
+         /etc/confluent/docker/run &
+         #
+         # Wait for Kafka Connect listener
+         echo "Waiting for Kafka Connect to start listening on localhost"
+         while : ; do
+           curl_status=$$(curl -s -o /dev/null -w %{http_code} http://localhost:8083/connectors)
+           echo -e $$(date) " Kafka Connect listener HTTP state: " $$curl_status " (waiting for 200)"
+           if [ $$curl_status -eq 200 ] ; then
+             break
+           fi
+           sleep 5 
+         done
+         echo -e "\n--\n+> Creating Data Generator source"
+         cd /connectConfFiles
+         curl -i -X PUT -H Content-Type:application/json http://localhost:8083/connectors/sink-neo4j-orders-00/config -d@contrib.sink.string-json.neo4j.json
+         curl -i -X PUT -H Content-Type:application/json http://localhost:8083/connectors/sink-jdbc-mysql-00/config -d@contrib.sink.string-json.mysql.json
+         #
+         sleep infinity
+
+
+   neo4j:
+     image: neo4j:4.2.3
+     container_name: neo4j
+     ports:
+       - "7474:7474"
+       - "7687:7687"
+     environment:
+       NEO4J_AUTH: neo4j/connect
+       NEO4J_dbms_memory_heap_max__size: 8G
+       NEO4J_ACCEPT_LICENSE_AGREEMENT: 'yes'
+
+   mysql:
+    # *-----------------------------*
+    # To connect to the DB:
+    #   docker exec -it mysql bash -c 'mysql -u root -p$MYSQL_ROOT_PASSWORD demo'
+    # *-----------------------------*
+     image: mysql:8.0
+     container_name: mysql
+     ports:
+       - 3306:3306
+     environment:
+       - MYSQL_ROOT_PASSWORD=debezium
+       - MYSQL_USER=mysqluser
+       - MYSQL_PASSWORD=mysqlpw
+     volumes:
+       - ./mysql-init-files:/docker-entrypoint-initdb.d
+
+   init-kafka:
+     image: confluentinc/cp-kafka:latest
+     depends_on:
+       - kafka
+     entrypoint: [ '/bin/sh', '-c' ]
+     command: |
+       "
+       # blocks until kafka is reachable
+       kafka-topics --bootstrap-server kafka:9092 --list 
+
+       echo -e 'Deleting kafka topics'
+       kafka-topics --bootstrap-server kafka:9092 --delete --topic Farm
+       kafka-topics --bootstrap-server kafka:9092 --delete --topic Process
+       kafka-topics --bootstrap-server kafka:9092 --delete --topic Bake
+       kafka-topics --bootstrap-server kafka:9092 --delete --topic Dist
+       kafka-topics --bootstrap-server kafka:9092 --delete --topic Buy
+
+       echo -e 'Creating kafka topics'
+       kafka-topics --bootstrap-server kafka:9092 --create --topic Farm
+       kafka-topics --bootstrap-server kafka:9092 --create --topic Process
+       kafka-topics --bootstrap-server kafka:9092 --create --topic Bake
+       kafka-topics --bootstrap-server kafka:9092 --create --topic Dist
+       kafka-topics --bootstrap-server kafka:9092 --create --topic Buy
+
+       echo -e 'Successfully created the following topics:'
+       kafka-topics --bootstrap-server kafka:9092 --list
+
+       sleep infinity
+       "
+  
+   python:
+     image: python:latest
+     volumes: 
+       - ./script:/script
+     command:
+       - bash
+       - -c
+       - |
+         #wait for kafka topics to be generated
+         echo "waiting for kafka topics to be availiable"
+         sleep 30
+        
+         echo "generating data"
+         cd /script
+         pip install kafka-python
+         pip install numpy
+         python data_generator.py
+         
+         echo "generated data, going to sleep"
+         sleep infinity
