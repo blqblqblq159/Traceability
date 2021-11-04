@@ -46,18 +46,18 @@ bad_flag = {
     "Dist":set(random.sample(range(100),3))}
 print(bad_flag)
 alive_dict = {
-    "Farm":np.array([]),
-    "Process":np.array([]),
-    "Bake":np.array([]),
-    "Dist":np.array([]),
-    "Buy":np.array([])}
+    "Farm":[],
+    "Process":[],
+    "Bake":[],
+    "Dist":[],
+    "Buy":[]}
 batch_dict = {"Farm":0, "Process":0, "Bake":0, "Dist":0, "Buy":0}
 machine_batching = np.zeros(AUTOCOUNT)
 process_manager = "Farm"
 number_of_purchases=10000
 while batch_dict["Buy"] < number_of_purchases:
     if process_manager == "Farm":
-        alive_dict[process_manager] = np.append(alive_dict[process_manager], batch_dict[process_manager])
+        alive_dict[process_manager].append(batch_dict[process_manager])
         farmer_roll = np.random.randint(FARMERCOUNT)
         message = {
             "schema": {
@@ -92,7 +92,7 @@ while batch_dict["Buy"] < number_of_purchases:
         batch_dict[process_manager] += 1
         process_manager = "Process"
     elif process_manager == "Process":
-        alive_dict[process_manager] = np.append(alive_dict[process_manager], batch_dict[process_manager])
+        alive_dict[process_manager].append(batch_dict[process_manager])
         processor_roll = np.random.randint(PROCESSORCOUNT)
         message = {
             "schema": {
@@ -135,15 +135,15 @@ while batch_dict["Buy"] < number_of_purchases:
         process_count = (process_count + 1) % proc_per_grain
         batch_dict[process_manager] += 1
         if process_count == 0:
-            alive_dict["Farm"] = np.delete(alive_dict["Farm"],0)
+            alive_dict["Farm"].pop(0)
             if len(alive_dict["Farm"]) == 0:    
                 process_manager = "Bake"
 
 
     elif process_manager == "Bake":
-        alive_dict[process_manager] = np.append(alive_dict[process_manager], batch_dict[process_manager])
+        alive_dict[process_manager].append(batch_dict[process_manager])
         baker_roll = np.random.randint(BAKERYCOUNT)
-        message ={
+        message = {
             "schema": {
                 "type": "struct",
                 "optional": False,
@@ -184,13 +184,13 @@ while batch_dict["Buy"] < number_of_purchases:
         bake_count = (bake_count + 1) % bake_per_proc
         batch_dict[process_manager] += 1
         if bake_count == 0:
-            alive_dict["Process"] = np.delete(alive_dict["Process"],0)
+            alive_dict["Process"].pop(0)
             if len(alive_dict["Process"]) == 0:    
                 process_manager = "Dist"
 
     elif process_manager == "Dist":
         bread_roll = int(random.sample(list(set(range(AUTOCOUNT))-set(alive_dict["Dist"])),1)[0])
-        alive_dict[process_manager] = np.append(alive_dict[process_manager], bread_roll)
+        alive_dict[process_manager].append(bread_roll)
         machine_batching[bread_roll] = batch_dict[process_manager]
         message = {
             "schema": {
@@ -239,13 +239,13 @@ while batch_dict["Buy"] < number_of_purchases:
         dist_count = (dist_count + 1) % dist_per_bake
         batch_dict[process_manager] += 1
         if dist_count == 0:
-            alive_dict["Bake"] = np.delete(alive_dict["Bake"],0)
+            alive_dict["Bake"].pop(0)
             if len(alive_dict["Bake"]) == 0:    
                 process_manager = "Buy"
 
     if process_manager == "Buy":
         customer_roll = np.random.randint(CUSTOMERCOUNT)
-        machine_roll = int(random.sample(list(alive_dict["Dist"]),1)[0])
+        machine_roll = int(random.sample(alive_dict["Dist"],1)[0])
         if machine_batching[machine_roll] in bad_flag["Dist"]:
             goodrating = (np.random.uniform() > 0.9)
         else:
@@ -296,6 +296,6 @@ while batch_dict["Buy"] < number_of_purchases:
         consume_count[cons_entry] = (consume_count[cons_entry] + 1) % cons_per_dist
         batch_dict[process_manager] += 1
         if consume_count[cons_entry] == 0:
-            alive_dict["Dist"] = np.setdiff1d(alive_dict["Dist"],machine_roll)
+            alive_dict["Dist"].remove(machine_roll)
             if len(alive_dict["Dist"]) == 0:    
                 process_manager = "Farm"
