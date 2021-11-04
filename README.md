@@ -15,8 +15,3 @@
 ## following the notebook:
 - upload the contents of the 'figures' directory to jupyter notebook
 - upload and follow the traceability.ipynb notebook
-
-## todo
-- follow-up notebook
-- clean up data_generator.py code
-- maybe use AVRO serialisation instead of json schema in data_generator.py
