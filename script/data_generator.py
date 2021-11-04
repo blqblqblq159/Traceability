@@ -5,8 +5,6 @@ import time
 from kafka import KafkaProducer
 import numpy as np
 
-
-
 def serializer(message):
     return json.dumps(message).encode('utf-8')
 
@@ -23,7 +21,6 @@ for i in range(10):
         else:
             print("failed to connect to broker")
         
-
 FARMERCOUNT = 10
 PROCESSORCOUNT = 25
 BAKERYCOUNT = 25
