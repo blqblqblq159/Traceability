@@ -14,8 +14,7 @@ for i in range(10):
     try:
         producer = KafkaProducer(
             bootstrap_servers=['kafka:9092'],
-            value_serializer=serializer,
-            key_serializer=serializer)
+            value_serializer=serializer)
     except:
         print(f"""could not connect to broker on attempt {i}/9""")
         if i < 9:
@@ -56,7 +55,7 @@ batch_dict = {"Farm":0, "Process":0, "Bake":0, "Dist":0, "Buy":0}
 machine_batching = np.zeros(AUTOCOUNT)
 process_manager = "Farm"
 number_of_purchases=10000
-while batch_dict["Buy"]<number_of_purchases:
+while batch_dict["Buy"] < number_of_purchases:
     if process_manager == "Farm":
         alive_dict[process_manager] = np.append(alive_dict[process_manager], batch_dict[process_manager])
         farmer_roll = np.random.randint(FARMERCOUNT)
@@ -84,7 +83,7 @@ while batch_dict["Buy"]<number_of_purchases:
                 ]
             },
             "payload": {
-                "Batchnr":batch_dict[process_manager],
+                "Batchnr": batch_dict[process_manager],
                 "FarmerID": farmer_roll,
                 "Timestamp": str(datetime.now().time())
             }
@@ -125,9 +124,9 @@ while batch_dict["Buy"]<number_of_purchases:
             },
             "payload": {
                 "Batchnr": batch_dict[process_manager],
-                "ProcessorID":processor_roll, 
+                "ProcessorID": processor_roll, 
                 "FarmBatchnr": alive_dict["Farm"][0],
-                "Timestamp":str(datetime.now().time())
+                "Timestamp": str(datetime.now().time())
             }
         }
         producer.send(process_manager, message).get(timeout=30)
@@ -174,9 +173,9 @@ while batch_dict["Buy"]<number_of_purchases:
             },
             "payload": {
                 "Batchnr": batch_dict[process_manager],
-                "BakeryID":baker_roll,
+                "BakeryID": baker_roll,
                 "ProcessBatchnr": alive_dict["Process"][0],
-                "Timestamp":str(datetime.now().time())
+                "Timestamp": str(datetime.now().time())
             }
         }
         producer.send(process_manager, message).get(timeout=30)
@@ -246,7 +245,7 @@ while batch_dict["Buy"]<number_of_purchases:
 
     if process_manager == "Buy":
         customer_roll = np.random.randint(CUSTOMERCOUNT)
-        machine_roll = int(random.sample(alive_dict["Dist"],1)[0])
+        machine_roll = int(random.sample(list(alive_dict["Dist"]),1)[0])
         if machine_batching[machine_roll] in bad_flag["Dist"]:
             goodrating = (np.random.uniform() > 0.9)
         else:
@@ -285,11 +284,11 @@ while batch_dict["Buy"]<number_of_purchases:
                 ]
             },
             "payload": {
-                "purchaseID":batch_dict[process_manager],
-                "CustomerID":customer_roll,
+                "purchaseID": batch_dict[process_manager],
+                "CustomerID": customer_roll,
                 "MachineBatchnr": machine_batching[machine_roll],
-                "Timestamp":str(datetime.now().time()),
-                "goodrating":goodrating
+                "Timestamp": str(datetime.now().time()),
+                "goodrating": goodrating
             }
         }
         producer.send(process_manager, message).get(timeout=30)     
