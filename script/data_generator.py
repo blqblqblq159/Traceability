@@ -58,7 +58,7 @@ process_manager = "Farm"
 number_of_purchases=10000
 while batch_dict["Buy"]<number_of_purchases:
     if process_manager == "Farm":
-        alive_dict[process_manager] = np.append(alive_dict[process_manager], batch_dict[process_manager]) #add new batch
+        alive_dict[process_manager] = np.append(alive_dict[process_manager], batch_dict[process_manager])
         farmer_roll = np.random.randint(FARMERCOUNT)
         message = {
             "schema": {
@@ -190,7 +190,7 @@ while batch_dict["Buy"]<number_of_purchases:
                 process_manager = "Dist"
 
     elif process_manager == "Dist":
-        bread_roll = int(random.sample(set(range(AUTOCOUNT))-set(alive_dict["Dist"]),1)[0])
+        bread_roll = int(random.sample(list(set(range(AUTOCOUNT))-set(alive_dict["Dist"])),1)[0])
         alive_dict[process_manager] = np.append(alive_dict[process_manager], bread_roll)
         machine_batching[bread_roll] = batch_dict[process_manager]
         message = {
@@ -246,7 +246,7 @@ while batch_dict["Buy"]<number_of_purchases:
 
     if process_manager == "Buy":
         customer_roll = np.random.randint(CUSTOMERCOUNT)
-        machine_roll = int(random.sample(set(alive_dict["Dist"]),1)[0])
+        machine_roll = int(random.sample(alive_dict["Dist"],1)[0])
         if machine_batching[machine_roll] in bad_flag["Dist"]:
             goodrating = (np.random.uniform() > 0.9)
         else:
