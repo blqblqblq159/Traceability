@@ -88,6 +88,7 @@ while batch_dict["Buy"] < number_of_purchases:
         producer.send(process_manager, message).get(timeout=30)
         batch_dict[process_manager] += 1
         process_manager = "Process"
+
     elif process_manager == "Process":
         alive_dict[process_manager].append(batch_dict[process_manager])
         processor_roll = np.random.randint(PROCESSORCOUNT)
@@ -240,7 +241,7 @@ while batch_dict["Buy"] < number_of_purchases:
             if len(alive_dict["Bake"]) == 0:    
                 process_manager = "Buy"
 
-    if process_manager == "Buy":
+    elif process_manager == "Buy":
         customer_roll = np.random.randint(CUSTOMERCOUNT)
         machine_roll = int(random.sample(alive_dict["Dist"],1)[0])
         if machine_batching[machine_roll] in bad_flag["Dist"]:
