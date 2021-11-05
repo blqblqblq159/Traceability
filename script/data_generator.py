@@ -51,7 +51,8 @@ alive_dict = {
 batch_dict = {"Farm":0, "Process":0, "Bake":0, "Dist":0, "Buy":0}
 machine_batching = np.zeros(AUTOCOUNT)
 process_manager = "Farm"
-number_of_purchases=10000
+number_of_purchases = 10000
+
 while batch_dict["Buy"] < number_of_purchases:
     if process_manager == "Farm":
         alive_dict[process_manager].append(batch_dict[process_manager])
