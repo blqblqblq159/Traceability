@@ -228,8 +228,8 @@ while batch_dict["Buy"] < number_of_purchases:
                 "Batchnr": batch_dict[process_manager],
                 "machineID": bread_roll,
                 "BakeBatchnr": alive_dict["Bake"][0],
-                "second": datetime.now().time().second,
-                "minute": datetime.now().time().minute
+                "second": datetime.now().time().second
+                ,"minute": datetime.now().time().minute
             }
         }
         producer.send(process_manager, message).get(timeout=30)
