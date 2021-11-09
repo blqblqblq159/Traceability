@@ -1,5 +1,4 @@
 # how to run the kafka connect docker and make neo4j/mysql sink
-- make sure mysql-connector-java-8.0.27.jar is in mysql-connector-java-8.0.27 directory
 - docker-copmpose up -d
 - a python script will populate kafka topics with fake data
 - neo4j and mysql will be populated with this data via kafka sink connectors

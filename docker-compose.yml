@@ -66,7 +66,7 @@
        CONNECT_STATUS_STORAGE_TOPIC: _connect-status
        CONNECT_KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
        CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
-       CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: true
+       CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: 'true'
        CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: 'http://schema-registry:8081'
        CONNECT_REST_ADVERTISED_HOST_NAME: "kafka-connect"
        CONNECT_LOG4J_APPENDER_STDOUT_LAYOUT_CONVERSIONPATTERN: "[%d] %p %X{connector.context}%m (%c:%L)%n"
@@ -84,7 +84,7 @@
          echo "Installing Connectors"
          confluent-hub install --no-prompt neo4j/kafka-connect-neo4j:latest
          confluent-hub install --no-prompt confluentinc/kafka-connect-jdbc:latest
-         mv /usr/share/java/kafka-connect-jdbc/mysql-connector-java-8.0.27.jar /usr/share/confluent-hub-components/confluentinc-kafka-connect-jdbc/lib/
+         cp /usr/share/java/kafka-connect-jdbc/mysql-connector-java-8.0.27.jar /usr/share/confluent-hub-components/confluentinc-kafka-connect-jdbc/lib/
          #
          echo "Launching Kafka Connect worker"
          /etc/confluent/docker/run &
@@ -108,7 +108,7 @@
 
 
    neo4j:
-     image: neo4j:4.2.3
+     image: neo4j:latest
      container_name: neo4j
      ports:
        - "7474:7474"
@@ -117,6 +117,10 @@
        NEO4J_AUTH: neo4j/connect
        NEO4J_dbms_memory_heap_max__size: 8G
        NEO4J_ACCEPT_LICENSE_AGREEMENT: 'yes'
+       NEO4J_dbms_directories_import: "/"
+       NEO4JLABS_PLUGINS: '["apoc"]'
+     volumes:
+       - ./neo4j-init-files:/var/lib/neo4j/conf
 
    mysql:
     # *-----------------------------*
@@ -145,18 +149,18 @@
        kafka-topics --bootstrap-server kafka:9092 --list 
 
        echo -e 'Deleting kafka topics'
-       kafka-topics --bootstrap-server kafka:9092 --delete --topic Farm
-       kafka-topics --bootstrap-server kafka:9092 --delete --topic Process
-       kafka-topics --bootstrap-server kafka:9092 --delete --topic Bake
-       kafka-topics --bootstrap-server kafka:9092 --delete --topic Dist
-       kafka-topics --bootstrap-server kafka:9092 --delete --topic Buy
+       kafka-topics --bootstrap-server kafka:9092 --delete --topic grainbatches
+       kafka-topics --bootstrap-server kafka:9092 --delete --topic flourbatches
+       kafka-topics --bootstrap-server kafka:9092 --delete --topic breadbatches
+       kafka-topics --bootstrap-server kafka:9092 --delete --topic distributions
+       kafka-topics --bootstrap-server kafka:9092 --delete --topic purchases
 
        echo -e 'Creating kafka topics'
-       kafka-topics --bootstrap-server kafka:9092 --create --topic Farm
-       kafka-topics --bootstrap-server kafka:9092 --create --topic Process
-       kafka-topics --bootstrap-server kafka:9092 --create --topic Bake
-       kafka-topics --bootstrap-server kafka:9092 --create --topic Dist
-       kafka-topics --bootstrap-server kafka:9092 --create --topic Buy
+       kafka-topics --bootstrap-server kafka:9092 --create --topic grainbatches
+       kafka-topics --bootstrap-server kafka:9092 --create --topic flourbatches
+       kafka-topics --bootstrap-server kafka:9092 --create --topic breadbatches
+       kafka-topics --bootstrap-server kafka:9092 --create --topic distributions
+       kafka-topics --bootstrap-server kafka:9092 --create --topic purchases
 
        echo -e 'Successfully created the following topics:'
        kafka-topics --bootstrap-server kafka:9092 --list

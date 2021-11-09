@@ -21,6 +21,9 @@ for i in range(10):
         else:
             print("failed to connect to broker")
         
+
+#high level idea meegeven
+
 FARMERCOUNT = 10
 PROCESSORCOUNT = 25
 BAKERYCOUNT = 25
@@ -64,29 +67,29 @@ while batch_dict["Buy"] < number_of_purchases:
                 "version": 1,
                 "fields": [
                     {
-                        "field": "FarmerID",
+                        "field": "grainbatch_id",
                         "type": "int64",
                         "optional": True
                     },
                     {
-                        "field": "Batchnr",
+                        "field": "parent_farmer_id",
                         "type": "int64",
                         "optional": True
                     },
                     {
-                        "field": "Timestamp",
+                        "field": "timestamp",
                         "type": "string",
                         "optional": True
                     }
                 ]
             },
             "payload": {
-                "Batchnr": batch_dict[process_manager],
-                "FarmerID": farmer_roll,
-                "Timestamp": str(datetime.now().time())
+                "grainbatch_id": batch_dict[process_manager],
+                "parent_farmer_id": farmer_roll,
+                "timestamp": str(datetime.now().time())
             }
         }
-        producer.send(process_manager, message).get(timeout=30)
+        producer.send("grainbatches", message).get(timeout=30)
         batch_dict[process_manager] += 1
         process_manager = "Process"
 
@@ -100,35 +103,35 @@ while batch_dict["Buy"] < number_of_purchases:
                 "version": 1,
                 "fields": [
                     {
-                        "field": "ProcessorID",
+                        "field": "flourbatch_id",
                         "type": "int64",
                         "optional": True
                     },
                     {
-                        "field": "Batchnr",
+                        "field": "parent_processor_id",
                         "type": "int64",
                         "optional": True
                     },
                     {
-                        "field": "FarmBatchnr",
+                        "field": "parent_grainbatch_id",
                         "type": "int64",
                         "optional": True
                     },
                     {
-                        "field": "Timestamp",
+                        "field": "timestamp",
                         "type": "string",
                         "optional": True
                     }
                 ]
             },
             "payload": {
-                "Batchnr": batch_dict[process_manager],
-                "ProcessorID": processor_roll, 
-                "FarmBatchnr": alive_dict["Farm"][0],
-                "Timestamp": str(datetime.now().time())
+                "flourbatch_id": batch_dict[process_manager],
+                "parent_processor_id": processor_roll, 
+                "parent_grainbatch_id": alive_dict["Farm"][0],
+                "timestamp": str(datetime.now().time())
             }
         }
-        producer.send(process_manager, message).get(timeout=30)
+        producer.send("flourbatches", message).get(timeout=30)
         if alive_dict["Farm"][0] in bad_flag["Farm"]:
             bad_flag["Process"].add(batch_dict[process_manager])
         process_count = (process_count + 1) % proc_per_grain
@@ -149,35 +152,35 @@ while batch_dict["Buy"] < number_of_purchases:
                 "version": 1,
                 "fields": [
                     {
-                        "field": "BakeryID",
+                        "field": "breadbatch_id",
                         "type": "int64",
                         "optional": True
                     },
                     {
-                        "field": "Batchnr",
+                        "field": "parent_bakery_id",
                         "type": "int64",
                         "optional": True
                     },
                     {
-                        "field": "ProcessBatchnr",
+                        "field": "parent_flourbatch_id",
                         "type": "int64",
                         "optional": True
                     },
                     {
-                        "field": "Timestamp",
+                        "field": "timestamp",
                         "type": "string",
                         "optional": True
                     }
                 ]
             },
             "payload": {
-                "Batchnr": batch_dict[process_manager],
-                "BakeryID": baker_roll,
-                "ProcessBatchnr": alive_dict["Process"][0],
-                "Timestamp": str(datetime.now().time())
+                "breadbatch_id": batch_dict[process_manager],
+                "parent_bakery_id": baker_roll,
+                "parent_flourbatch_id": alive_dict["Process"][0],
+                "timestamp": str(datetime.now().time())
             }
         }
-        producer.send(process_manager, message).get(timeout=30)
+        producer.send("breadbatches", message).get(timeout=30)
         if alive_dict["Process"][0] in bad_flag["Process"]:
             bad_flag["Bake"].add(batch_dict[process_manager])
         bake_count = (bake_count + 1) % bake_per_proc
@@ -198,17 +201,17 @@ while batch_dict["Buy"] < number_of_purchases:
                 "version": 1,
                 "fields": [
                     {
-                        "field": "machineID",
+                        "field": "distribution_id",
                         "type": "int64",
                         "optional": True
                     },
                     {
-                        "field": "Batchnr",
+                        "field": "parent_vending_machine_id",
                         "type": "int64",
                         "optional": True
                     },
                     {
-                        "field": "BakeBatchnr",
+                        "field": "parent_breadbatch_id",
                         "type": "int64",
                         "optional": True
                     },
@@ -225,14 +228,14 @@ while batch_dict["Buy"] < number_of_purchases:
                 ]
             },
             "payload": {
-                "Batchnr": batch_dict[process_manager],
-                "machineID": bread_roll,
-                "BakeBatchnr": alive_dict["Bake"][0],
-                "second": datetime.now().time().second
-                ,"minute": datetime.now().time().minute
+                "distribution_id": batch_dict[process_manager],
+                "parent_vending_machine_id": bread_roll,
+                "parent_breadbatch_id": alive_dict["Bake"][0],
+                "second": datetime.now().time().second,
+                "minute": datetime.now().time().minute
             }
         }
-        producer.send(process_manager, message).get(timeout=30)
+        producer.send("distributions", message).get(timeout=30)
         if alive_dict["Bake"][0] in bad_flag["Bake"]:
             bad_flag["Dist"].add(batch_dict[process_manager])
         dist_count = (dist_count + 1) % dist_per_bake
@@ -256,41 +259,41 @@ while batch_dict["Buy"] < number_of_purchases:
                 "version": 1,
                 "fields": [
                     {
-                        "field": "purchaseID",
+                        "field": "purchase_id",
                         "type": "int64",
                         "optional": True
                     },
                     {
-                        "field": "CustomerID",
+                        "field": "child_customer_id",
                         "type": "int64",
                         "optional": True
                     },
                     {
-                        "field": "MachineBatchnr",
+                        "field": "parent_distribution_id",
                         "type": "int64",
                         "optional": True
                     },
                     {
-                        "field": "Timestamp",
+                        "field": "timestamp",
                         "type": "string",
                         "optional": True
                     },
                     {
-                        "field": "goodrating",
+                        "field": "good_rating",
                         "type": "boolean",
                         "optional": True
                     }
                 ]
             },
             "payload": {
-                "purchaseID": batch_dict[process_manager],
-                "CustomerID": customer_roll,
-                "MachineBatchnr": machine_batching[machine_roll],
-                "Timestamp": str(datetime.now().time()),
-                "goodrating": goodrating
+                "purchase_id": batch_dict[process_manager],
+                "child_customer_id": customer_roll,
+                "parent_distribution_id": machine_batching[machine_roll],
+                "timestamp": str(datetime.now().time()),
+                "good_rating": goodrating
             }
         }
-        producer.send(process_manager, message).get(timeout=30)     
+        producer.send("purchases", message).get(timeout=30)     
         cons_entry = int(machine_batching[machine_roll] % dist_per_grain)
         consume_count[cons_entry] = (consume_count[cons_entry] + 1) % cons_per_dist
         batch_dict[process_manager] += 1
