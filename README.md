@@ -1,5 +1,6 @@
 # how to run the kafka connect docker and make neo4j/mysql sink
-- docker-copmpose up -d
+- make sure no other instance of neo4j or mySQL is running on your pc
+- docker-compose up -d
 - a python script will populate kafka topics with fake data
 - neo4j and mysql will be populated with this data via kafka sink connectors
 
